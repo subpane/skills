@@ -2,7 +2,7 @@
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "subpane",
   "displayName": "Subpane",
-  "version": "1.0.0",
+  "version": "1.1.0",
   "description": "Create, design, and maintain calm live dashboards from structured JSON over OAuth 2.1 Streamable HTTP MCP.",
   "homepage": "https://subpane.app",
   "repository": "https://github.com/subpane/skills",

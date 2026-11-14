@@ -1,55 +1,48 @@
-# Widget Schema Rules & Repair Cookbook
+# Widget Rules and Repair Cookbook
 
-All Subpane schemas enforce `strictObject` (unknown fields fail immediately with `VALIDATION_FAILED`). When connected to a server with newer schemas or custom quotas, treat `get_board_guide` and `get_limits` as authoritative.
+Widgets reject unknown fields with `VALIDATION_FAILED`. Where a rule offers alternatives (items or source, path or value), use exactly one. If the server's `get_board_guide` or `get_limits` differs, follow the server.
 
-## 1. Shared Primitives
+## 1. Shared primitives
 
-- **JSON Pointer**: Starts with `/` (for example `/summary/revenue`). Escape `~` as `~0` and `/` as `~1`.
-- **`NumberFormat`**: `{ digits?: 0..12, prefix?: string, suffix?: string, grouping?: boolean, notation?: "standard" | "compact" }` (affixes up to 200 chars).
-  - `notation: "compact"` formats `18420000` -> `18.4M` (or `999950` -> `1M` with cross-tier rounding) and places the unit before `suffix`.
-- **`ToneInput`**:
-  - Static string: `"default" | "info" | "success" | "warn" | "danger"`
-  - Dynamic mapping (up to 32 entries): `{ path: "/status", map?: { ok: "success", warn: "warn", fail: "danger" }, fallback?: "default" }` (resolves from root on root-bound widgets, or from the current row on `source`-bound widgets).
-- **`DisplayValue`**:
-  - Non-empty string `"literal"`
-  - `{ path: "/field", format?: NumberFormat, link?: Link }`
-  - Fragment array (1–20 items): `["Workers: ", { path: "/online", format: { grouping: true } }]`
-- **`Link`** (up to 2048 UTF-8 bytes; never embed secret tokens or credentials in URLs):
-  - `{ kind: "static", url: "https://..." }` (required for widget header `link`)
-  - `{ kind: "path", path: "/url" }` (allowed on `stat.value_link`, `kv` items, `table` columns, `list` items/fields, and `DisplayValue` path objects; unsafe runtime protocols fall back safely to plain text).
+- JSON Pointer: paths start with `/` (e.g. `/summary/revenue`); escape `~` as `~0` and `/` as `~1`. Scalar widgets use root paths; `source` widgets take a root array and row-relative field paths.
+- `NumberFormat`: `{ digits?: 0-12, prefix?, suffix?, grouping?: boolean, notation?: "standard" | "compact" }`, affixes up to 200 chars. `compact` abbreviates to K/M/B/T (`18420000` shows as `18.4M`).
+- `ToneInput`: a tone (`"default" | "info" | "success" | "warn" | "danger"`), or `{ path, map?, fallback? }` with up to 32 map entries to choose one from data. Paths resolve from the root, or from the current row on `source` widgets.
+- `DisplayValue`: a non-empty string, `{ path, format?, link? }`, or up to 20 fragments such as `["Workers: ", { path: "/online", format: { grouping: true } }]`.
+- `Link` (up to 2048 bytes, no credentials): `{ kind: "static", url: "https://..." }` or `{ kind: "path", path: "/url" }`. Widget header links are static only.
 
-## 2. Mutually Exclusive Widget Branches
+## 2. Widget rules
 
-| Widget | Branch Rules & Gotchas |
+| Widget | Rules |
 |---|---|
-| `stat` | Root `path` required. If `format` is set, target JSON value must be a `number` (otherwise `string` or `number`). Optional `badge` (literal `text` max 64 chars), `delta`, `subtext`, `value_link`. |
-| `kv` | Fixed `items` (1–24), optional `columns` (`1 \| 2 \| 3`). Each item must use **either** `path` (+ optional `format`) **or** `value: DisplayValue`—never both on the same item. `cell`: `"auto" \| "badge" \| "code"`. |
-| `meter` | `variant`: `"progress"` (default, 1–24 rows) or `"segmented"` (1–8 segments). Choose **either** fixed `items` **or** array `source` + `fields`. In fixed `items`, path refs are objects (`{ path: "/used" }`); in `source` `fields`, paths are strings (`value: "/used"`). `segmented` items only allow `label`, non-negative `value`, and `format` (omit `max`, `tone`, `subtext`). |
-| `list` | `variant`: `"plain"` (default), `"feed"`, or `"timeline"`. `marker` (`"bullet" \| "number" \| "none"`) is valid **only** when `variant` is `"plain"` or omitted. Choose **either** fixed `items` (1–100) **or** `source`. With `source`, pass at most **one** of `item` or `fields` (omit both for scalar arrays). |
-| `table` | Requires `source` and `fields.columns` (1–50 unique `path`s). `cell`: `"auto" \| "badge" \| "progress" \| "code"`. Pass `max` **only** when `cell: "progress"`. Set `sortable: true` for interactive lossless numeric sorting. |
-| `line` | Requires `source` (up to 1,000 points) and `fields: { x, series }` (1–12 unique series `path`s). `x` must be non-null string/number; `series` values must be numbers (or `null` gaps). Optional `area: true`, `y_format`, `reference_lines` (1–4). |
-| `bar` | Requires `source` and `fields: { x, series }` (1–12 unique series `path`s). Optional `stacked: true`, `orientation: "vertical" \| "horizontal"`, `y_format`. |
-| `text` | Requires `content: DisplayValue` (up to 20 fragments). Optional `markdown: true` (safe headings, lists, emphasis, code, `http(s)` links) and `tone: ToneInput` (callout banner). |
+| `stat` | `path` reads a root value: a number when `format` is set, otherwise a string or number. Optional `badge` (literal text max 64 chars), `delta`, `subtext`, `value_link`. |
+| `kv` | `items` (1–24), optional `columns` (1, 2, or 3). Each item has `label` plus either `path` (with optional `format`) or `value`, not both. `cell`: `"auto"`, `"badge"`, or `"code"`. |
+| `meter` | `variant`: `"progress"` (default, up to 24 rows) or `"segmented"` (up to 8 segments). Fixed `items` or `source` + `fields`, not both. In `items`, paths are objects (`{ path: "/used" }`); in `fields`, strings (`value: "/used"`). Segmented items accept only `label`, `value`, and `format`. |
+| `list` | `variant`: `"plain"` (default), `"feed"`, or `"timeline"`; `marker` applies to plain only. Fixed `items` (1–100) or `source`, not both. With `source`, use `fields` for object rows, `item` for one field per row, or neither for scalars. |
+| `table` | `source` and `fields.columns` (1–50 unique `path`s). `cell`: `"auto"`, `"badge"`, `"progress"`, or `"code"`; `max` only with `"progress"`. `sortable: true` lets viewers sort; numbers sort numerically. |
+| `line` | `source` (up to 1,000 points) and `fields: { x, series }` (1–12 unique series paths). `x` is a string or number; series values are numbers or `null` gaps. Optional `area`, `y_format`, `reference_lines` (1–4). |
+| `bar` | `source` and `fields: { x, series }` (1–12 unique series paths). Optional `stacked`, `orientation` (`"vertical"` or `"horizontal"`), `y_format`. |
+| `text` | `content: DisplayValue`. Optional `markdown: true` (headings, lists, emphasis, code, `http(s)` links) and `tone` (callout banner). |
 
-## 3. Resolving Warnings & Errors
+## 3. Warnings and errors
 
-### `structuredContent.warnings` (`isError: false`)
+### `structuredContent.warnings`
 
-Writes still commit when `warnings` appear, and Subpane scans **all** sections including inactive `section.tabs`. Always clear warnings before finishing:
+The write is saved, but a binding does not match the data (hidden tabs included). Each warning is `{ widget, path, code, expected, actual? }`. Fix and write again until none remain.
 
-- `code: "missing"` -> Add the missing field via `update_board_data` (`op: "set"`) or fix the typo in the widget's `path` / `source` via `change_definition`.
-- `code: "type_mismatch"` -> Convert stringified numbers (`"42"` -> `42`), replace `null` on chart `x` labels with a string/number, or remove `format` on a `stat` intended to show strings. Note: an empty array `[]` on `source` is valid and renders `empty_text` with zero warnings.
-- `warnings_truncated: true` -> More than 12 warnings (or >2 KiB) exist; fix the reported batch and inspect the next write response until `warnings` is absent.
+- `missing`: the path does not exist. Add the value with `update_board_data`, or fix the widget's `path` or `source` with `change_definition`.
+- `type_mismatch`: the value has the wrong JSON type. Unquote numbers (`"42"` becomes `42`), give chart `x` a string or number, or drop `format` from a stat that shows text. An empty `source` array is valid and shows `empty_text`.
+- `warnings_truncated: true`: more than 12 warnings (or 2 KiB) exist; fix these and check the next response.
 
 ### `isError: true` (`structuredContent.error`)
 
-- `VALIDATION_FAILED` + `reason: "widget_not_in_layout"`: Every key in `widgets` must appear once in `layout[]`. When adding/removing widgets in `change_definition`, include `{ op: "set_layout", value: [...] }` in the same `changes` array.
-- `VALIDATION_FAILED` + `reason: "widget_missing"`: `change_definition` tried to `remove` a widget name not present in `definition.widgets`; inspect `get_definition` first.
-- `VALIDATION_FAILED` + `reason: "url_must_be_absolute_http"`: A static `link.url` is not a valid `http://` or `https://` URL without credentials.
-- `VALIDATION_FAILED` + `reason: "path_parent_not_object"`: `ops_json` attempted to index into an array (like `/daily/0/count`) or traverse through a scalar. Replace the parent array whole (`/daily`).
-- `VALIDATION_FAILED` + `reason: "path_missing"`: `ops_json` tried to `remove` a key (or traverse a parent path on `remove`) that does not exist in stored data; inspect `get_board_data` first or omit the `remove`.
-- `VALIDATION_FAILED` + `reason: "expected_object" | "invalid_operation" | "missing_value"`: Ensure `data_json` encodes a root JSON object `{...}` and every `ops_json` entry is `{ "op": "set", "path": "/...", "value": ... }` or `{ "op": "remove", "path": "/..." }`.
-- `INVALID_JSON`: `data_json` or `ops_json` is malformed JSON or contains duplicate keys in an object.
-- `PAYLOAD_TOO_LARGE` / `CAPACITY_EXCEEDED`: Exceeded `error.details.limit`; call `get_limits` and aggregate/trim rows or reuse an active board via `list_boards`.
-- `RATE_LIMITED`: Exceeded `max_definition_writes_per_minute` (30/min by default); send routine metric refreshes via `update_board_data` without rewriting `definition`.
-- `BOARD_ARCHIVED`: Board is read-only until restored by the user in Web UI; ask the user to restore it or create/select an active board.
+- `VALIDATION_FAILED` with `reason: "widget_not_in_layout"`: a widget is missing from `layout`. When `change_definition` adds or removes widgets, include `set_layout` in the same `changes`.
+- `VALIDATION_FAILED` with `reason: "widget_missing"`: `change_definition` removed a widget that does not exist; check `get_definition`.
+- `VALIDATION_FAILED` with `reason: "url_must_be_absolute_http"`: a static `link.url` is not an `http(s)` URL, or contains credentials.
+- `VALIDATION_FAILED` with `reason: "path_parent_not_object"`: `ops_json` indexed an array (`/daily/0/count`) or passed through a scalar; set the parent array (`/daily`) whole.
+- `VALIDATION_FAILED` with `reason: "path_missing"`: `remove` targeted a key that does not exist; check `get_board_data` or drop the op.
+- `VALIDATION_FAILED` with `reason: "expected_object" | "invalid_operation" | "missing_value"`: `data_json` must encode an object, and each op must be `{ "op": "set", "path": "/...", "value": ... }` or `{ "op": "remove", "path": "/..." }`.
+- `INVALID_JSON`: `data_json` or `ops_json` is malformed or has duplicate keys.
+- `PAYLOAD_TOO_LARGE`: data exceeds the limit in `error.details.limit`; aggregate or trim rows (see `get_limits`).
+- `CAPACITY_EXCEEDED`: the board limit is reached; reuse a board from `list_boards`.
+- `RATE_LIMITED`: too many definition writes this minute (default 30); wait, and refresh values with `update_board_data` instead.
+- `BOARD_ARCHIVED`: the board is read-only; ask the user to restore it, or use an active board.

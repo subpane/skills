@@ -20,7 +20,7 @@ Add Subpane directly in any AI assistant's **Connect Apps** / **Custom MCP** set
 - **Transport**: Streamable HTTP (stateless)
 - **Authentication**: OAuth 2.1 + S256 PKCE (auto-discovered via `/.well-known/oauth-protected-resource` and `/.well-known/oauth-authorization-server`)
 
-Once authorized in the browser, the MCP server exposes self-contained tool schemas and `get_board_guide` (including all 8 widget specifications and 4 peer-benchmarked layout blueprints), so remote-only agents work out of the box without local files.
+Once authorized in the browser, the MCP server exposes its tool schemas and `get_board_guide` (all 8 widget specs and 4 layout blueprints), so remote-only agents work without local files.
 
 ### Option 2: Install as an Agent Plugin / Skill
 

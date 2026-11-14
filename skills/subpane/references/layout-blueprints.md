@@ -1,28 +1,32 @@
-# Peer-Benchmarked Dashboard Layout Blueprints
+# Layout Blueprints
 
-Distilled from Grafana, Datadog, Linear, Stripe, and Vercel to fit Subpane's responsive container-width grid. If the connected MCP server reports newer layout rules or templates via `get_board_guide({ topic: "layout" })` or `get_board_guide({ topic: "blueprints" })`, follow the server response.
+Four complete boards to adapt. Each block pairs a valid `definition` with matching `sample_data`. If the server's `get_board_guide({ topic: "layout" })` or `get_board_guide({ topic: "blueprints" })` differs, follow the server.
 
-## Layout Sizing & Rhythm Rules
+## Layout rules
 
-- **Inverted Pyramid**: Put 3–4 scannable `stat` cards (or a `size: "lg"` status banner) in the first section, composition/trends in the middle, and dense row-level `table` / `timeline` views at the bottom.
-- **Container-Width Breakpoints**: Grid columns follow the board content container width (with `16px` hysteresis): `< 560px` = `mobile` (2 cols), `560–899px` = `medium` (8 cols), `>= 900px` = `desktop` (12 cols: `sm` = 3, `third` = 4, `md` = 6, `lg` = 12; omitted / `"auto"` uses widget defaults: `stat` -> `sm`, `table` -> `lg`, others -> `md`).
-- **Stat Row Isolation & Balanced Splitting**:
-  - On `desktop` and `medium`, `stat` cards never share a row with content widgets.
-  - Contiguous `stat` runs with a uniform base span split into balanced rows (`ceil(n / maxPerRow)`, earlier rows taking the extra card) and divide columns evenly when divisible—for example on `desktop` (`sm`): 2, 3, or 4 stats form one even row (6, 4, or 3 cols); 5 stats split `3 + 2`; 6 split `3 + 3`; 7 split `4 + 3` (`medium` splits 3 stats into `2 + 1`).
-  - On `mobile` (2 cols), contiguous non-`lg` `stat` cards pack 2-per-row (`1 + 1`) with an odd trailing card spanning full width (`2`).
-- **Remainder Columns & Equal Height**:
-  - On other incomplete rows, a single item spans the full row; otherwise leftover columns go to the item with the **largest base span** (ties go to the last item): `size: "third"` (4) + `size: "md"` (6) becomes `4 + 8` (1:2 sidebar + feed), and `size: "md"` (6) + `size: "third"` (4) becomes `8 + 4`.
-  - Pair `size: "third"` x3 (4/4/4 cols) for `kv` profiles and `meter` cards, `size: "md"` x2 (6/6 cols) for side-by-side charts or `table` + `timeline`, and `size: "lg"` (12 cols) for full-width banners, wide tables, or tabbed charts.
-  - All cards in the same row stretch to equal height. On narrow cards (`< 480px`), tables with `<= 6` columns stack each row vertically without clipping values.
-- **View Switching (`section.tabs`)**: Group 2–6 related charts or secondary feeds into static `tabs` instead of stacking endless vertical rows. Switching tabs is instant in the browser with zero network requests.
-- **Localize Blueprint Copy**: Blueprint templates below use English copy for portability. Translate section `label` / `description`, `tabs[].label`, widget/item/column `label`, and `empty_text` into the user's language while keeping lowercase ASCII `widgets` / `section.name` / `tab.name` identifiers.
+- Each widget appears exactly once in `layout`: in a section's `items`, or in one of its `tabs[].items`.
+- Section names, and tab names within a section, are unique identifiers.
+- A section has either `items: [{ widget, size? }]` or `tabs: [{ name, label, items }]` (2-6 tabs, switched without reloading). Every section and tab holds at least one widget.
+- Sizes on the 12-column desktop grid: `sm` = 3, `third` = 4, `md` = 6, `lg` = 12. `auto` (default) uses the widget's default size: stat `sm`, table `lg`, others `md`. Narrower screens reflow automatically (8 columns at 560-899px, 2 below).
+- Stat cards never share a row with content widgets and split into balanced rows (5 become 3 + 2). In other rows, leftover columns go to the widget with the largest base span (`third` + `md` becomes 4 + 8), and cards in a row share one height.
+
+## Design principles
+
+- Put 3-4 stat cards (or one text alert) on top, trends and composition in the middle, and detailed tables or timelines at the bottom.
+- Group related charts into one tabbed section rather than stacking more than four sections.
+- Use `third` x3 for small cards, `md` x2 for side-by-side charts, and `lg` for wide tables.
+- Templates use English copy: translate labels and `empty_text`, keep identifiers.
 
 ---
 
 ## Blueprint 1: Agent & Service Golden Signals (`agent_golden_signals`)
 
-**Benchmark**: Grafana RED & Datadog Service Overview  
-**Best for**: Autonomous agent fleets, background workers, API gateways, and LLM token/latency monitoring.
+Best for: Autonomous agent fleets, background workers, API gateways, and LLM token/latency monitoring.
+
+- Row 1 (4 `stat` cards): service state, throughput, error rate, and P95 latency.
+- Row 2 (3x `size:'third'`): runtime details (`kv`), quota and budget usage (`meter`, progress), and token mix (`meter`, segmented).
+- Row 3 (`section.tabs`): latency over time (`line` with an SLA reference line) and per-tool latency (`bar`, horizontal, stacked).
+- Row 4 (`md` + `md`): sortable runs (`table` with `code`, `badge`, `progress` cells) beside an alert log (`list` timeline).
 
 ```json
 {
@@ -258,8 +262,12 @@ Distilled from Grafana, Datadog, Linear, Stripe, and Vercel to fit Subpane's res
 
 ## Blueprint 2: Executive & Daily Intelligence Briefing (`executive_briefing`)
 
-**Benchmark**: Linear Pulse & Stripe Digest  
-**Best for**: Morning news/research digests, competitive intelligence, engineering standups, and PR/issue triage.
+Best for: Morning news/research digests, competitive intelligence, engineering standups, and PR/issue triage.
+
+- Row 1 (`lg` + `lg`): a one-sentence summary banner (`text` with `tone`) above 3-column edition details (`kv`).
+- Row 2 (3 `stat` cards): high-priority alerts, shipped milestones, and open follow-ups.
+- Row 3 (`third` + `md`): Markdown takeaways (`text`) beside a curated feed (`list`, `variant:'feed'`).
+- Row 4 (`section.tabs`): topic counts (`bar`, horizontal) and a source index (`table`).
 
 ```json
 {
@@ -387,8 +395,12 @@ Distilled from Grafana, Datadog, Linear, Stripe, and Vercel to fit Subpane's res
 
 ## Blueprint 3: Personal Business & SaaS Revenue Pulse (`saas_business_pulse`)
 
-**Benchmark**: Stripe Billing Overview & Vercel Usage  
-**Best for**: Indie SaaS revenue, e-commerce orders, subscription retention, and personal finance tracking.
+Best for: Indie SaaS revenue, e-commerce orders, subscription retention, and personal finance tracking.
+
+- Row 1 (4 `stat` cards): net revenue, active subscribers, conversion rate, and average order value.
+- Row 2 (`md` + `md`): daily revenue (`line` with area) beside new vs. renewal revenue (`bar`, stacked).
+- Row 3 (`third` + `md`): acquisition channel split (`meter`, segmented) beside numbered follow-ups (`list`, plain).
+- Row 4 (`lg` full-width `table`): recent transactions with invoice links, status badges, and sortable amounts.
 
 ```json
 {
@@ -532,8 +544,11 @@ Distilled from Grafana, Datadog, Linear, Stripe, and Vercel to fit Subpane's res
 
 ## Blueprint 4: Release Rollout & Incident War Room (`release_war_room`)
 
-**Benchmark**: Vercel Deployments & PagerDuty Status  
-**Best for**: Canary rollouts, database migrations, live incident response, and SLA burn tracking.
+Best for: Canary rollouts, database migrations, live incident response, and SLA burn tracking.
+
+- Row 1 (`lg`): a severity banner (`text` with tone mapped from `/incident/severity`).
+- Row 2 (3x `size:'third'`): rollout and error-budget bars (`meter`), release details (`kv`), and 5xx rate (`line` with a rollback threshold).
+- Row 3 (`md` + `md`): regional rollout (`table` with `progress` cells) beside a mitigation log (`list` timeline).
 
 ```json
 {

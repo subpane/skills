@@ -1,65 +1,59 @@
 ---
 name: subpane
-description: Design, publish, and maintain live Subpane dashboards over MCP. Use when the user asks to create or update a dashboard, status board, agent/service telemetry monitor, daily/executive briefing, or business KPI report in Subpane, or provides a Subpane `/boards/{board_id}` link.
+description: Publish and maintain live Subpane dashboards over MCP. Use when the user wants to create or update a dashboard, status board, monitor, briefing, or KPI report in Subpane, or shares a Subpane /boards/{board_id} link.
 ---
 
-# Subpane Dashboard Workflow
+# Subpane
 
-Turn structured JSON into calm, scannable Subpane dashboards over Streamable HTTP MCP.
+Subpane hosts live dashboards that the user opens at `board_url`. A board stores your `data_json` (a JSON object) and a `definition`: widgets bound to that data by JSON Pointer, arranged in a layout. Values render as stored, so compute totals, rates, and deltas yourself.
 
-> **Source of truth**: Treat the connected MCP server's live tool schemas, `get_board_guide`, and `get_limits` as authoritative whenever they differ from these local reference files (such as on newer server releases or custom-quota instances).
+The connected server's tool schemas, `get_board_guide`, and `get_limits` are authoritative; follow them where they differ from this skill.
 
-## 1. Connect & Resolve the Target Board
+## Connect
 
-- **Resolve the MCP endpoint**: When the user provides a board link (`https://<host>/boards/{board_id}`) or an explicit server origin, target `https://<host>/mcp`; default to `https://subpane.app/mcp` when no instance host is specified.
-- **Unconnected or unauthorized**: When `subpane` MCP tools are unavailable in the current session or fail with an authentication/authorization error, guide the user to add that `<origin>/mcp` URL in their client's MCP / Connect Apps settings and complete browser sign-in and OAuth authorization before retrying.
-- **Existing URL or UUID**: Extract `{board_id}` directly from `/boards/{board_id}`.
-- **Match by name**: Call `list_boards`. When multiple active boards match the user's request, ask the user which one to update before writing.
-- **New board**: Call `create_board` with `name` (1–120 chars) and optional `description` (up to 200 chars) written in the user's language.
+- The MCP endpoint is `https://<host>/mcp` for the host in the user's board link, otherwise `https://subpane.app/mcp`.
+- If Subpane tools are missing or fail authorization, help the user add that URL in their client's MCP or Connect Apps settings and sign in, then retry.
 
-## 2. Shape Safe Data, Language & Layout
+## Workflow
 
-Subpane renders stored JSON directly without server-side SQL aggregation:
+1. Target: use the board_id the user gave or the UUID in a `/boards/<id>` URL. Otherwise find it with `list_boards` (ask if several match) or call `create_board`.
+2. First publish: call `publish_board` with `definition` and `data_json` together. Start from a template in [layout-blueprints.md](references/layout-blueprints.md) or the widget examples in [widget-and-repair-cookbook.md](references/widget-and-repair-cookbook.md).
+3. Later changes: use the narrowest write tool (see below). On a board you did not build in this session, call `get_definition` first.
+4. Done when: the write returns no `warnings` and you have shared `board_url` with the user, noting when the data was captured.
 
-1. **Precompute & preserve numeric types**: Calculate totals, percentages, percentiles, sort orders, and period-over-period deltas in your own step. Keep numbers unquoted in `data_json` / `ops_json` (for example `18420000`, `9007199254740993`, `14.8`) so lossless decimal formatting, chart axes, progress bars, and numeric table sorting work accurately.
-2. **Design stable paths with a freshness field**: Organize root keys around stable JSON Pointers (such as `/meta`, `/kpis`, `/series`, `/runs`) and include an explicit data cut-off timestamp (for example `/meta/as_of`) surfaced in a masthead `kv`, `stat.subtext`, or banner so viewers know when the underlying metrics were captured.
-3. **Keep credentials out of boards**: Publish only aggregated metrics, operational statuses, desensitized identifiers, and safe console URLs—omit API keys, bearer tokens, passwords, connection strings, and secret query parameters from `data_json`, labels, and `link` URLs.
-4. **Localize all visible copy to the user's language**: Write board `name` / `description`, section `label` / `description`, `tabs[].label`, widget `label`, `kv` / `meter` item `label`, table column `label`, and `empty_text` in the user's language. Translate the English labels when adapting a blueprint while keeping structural keys (`widgets` keys, `section.name`, `tab.name`) in lowercase ASCII `^[a-z][a-z0-9_]{0,63}$`.
-5. **Select a peer-benchmarked layout**:
-   - **Agent / Service Monitoring (`agent_golden_signals`)** -> Golden Signals strip (`stat` x4) + saturation (`kv` + `meter` x2 at `size: "third"`) + tabbed charts (`line` / `bar`) + runs `table` & `timeline` `list`.
-   - **Daily / Executive Briefing (`executive_briefing`)** -> TL;DR callout (`text` with `tone`) + 3-col masthead (`kv`) + impact `stat` strip + Markdown synthesis (`size: "third"`) beside curated `feed` `list` (`size: "md"`).
-   - **Business / SaaS Pulse (`saas_business_pulse`)** -> Financial `stat` strip + revenue `line` & cohort `bar` (`md` + `md`) + segmented channel `meter` + transaction ledger `table` (`lg`).
-   - **Release / Incident War Room (`release_war_room`)** -> Dynamic-tone status banner + canary/budget `meter` + regional rollout `table` & checkpoint `timeline`.
+## Content rules
 
-Read [references/layout-blueprints.md](references/layout-blueprints.md) (or call `get_board_guide({ topic: "blueprints" })` over MCP) when designing or restructuring a board layout.
+- Localize all visible copy to the user's language: board name (up to 120 chars) and description (up to 200), section, tab, widget, item, and column labels, and `empty_text`. Widget, section, and tab names stay lowercase ASCII matching `^[a-z][a-z0-9_]{0,63}$`.
+- Write numbers as JSON numbers (`18420000`, `14.8`), not strings, so formats, charts, and sorting work. Large integers and exact decimals keep full precision.
+- Show when the data was captured, e.g. a `/meta/as_of` field in a `kv` or `stat` subtext.
+- Keep API keys, bearer tokens, passwords, connection strings, and secret query parameters out of data, labels, and URLs.
 
-## 3. Publish Initially & Refresh Lightly
+## Write tools
 
-Choose the narrowest write tool for the job:
-
-| Goal | Tool | Key Constraint |
+| Goal | Tool | Note |
 |---|---|---|
-| First publish, or data + layout change together | `publish_board` | Pass full `definition` plus **one** of `data_json` or `ops_json`. |
-| Routine metric/row refresh on existing layout | `update_board_data` | `ops_json` paths target object keys only; replace arrays whole (`/rows`, never `/rows/0/x`). |
-| Complete data snapshot replacement | `replace_board_data` | Root must be a JSON object `{...}`; omitted keys are deleted, `definition` stays intact. |
-| Add, edit, or remove widgets without resending data | `change_definition` | Include `{ op: "set_layout", value: [...] }` in the same call whenever adding or removing widgets. |
+| First publish, or a change to both widgets and data | `publish_board` | `definition` plus one of `data_json` or `ops_json`. |
+| Routine refresh of specific values | `update_board_data` | Object paths only; set arrays whole (`/rows`, not `/rows/0/x`). |
+| Replace all data | `replace_board_data` | Omitted keys are deleted; widgets are kept. |
+| Add, edit, or remove widgets | `change_definition` | When adding or removing, include `set_layout` in the same call. |
+| Replace all widgets and the layout | `replace_definition` | Data is kept. |
 
-### Routine Refresh & Quota Discipline
+Definition writes (`publish_board`, `replace_definition`, `change_definition`) share `max_definition_writes_per_minute` (default 30), so keep routine refreshes data-only. `get_limits` reports this instance's caps.
 
-- **Data-only refreshes**: Once a board layout is published, update recurring metrics and the data cut-off timestamp via `update_board_data` (or `replace_board_data`) and leave `definition` untouched.
-- **Definition write rate limit**: Tools that write `definition` (`publish_board`, `replace_definition`, `change_definition`) share `max_definition_writes_per_minute` (30/min by default; exceeding it returns `RATE_LIMITED`). Call `get_limits` before large or frequent writes whenever checking active instance caps (payload bytes, nesting depth, item counts, or write rates).
+## Layout
 
-### Critical Schema Invariants
+- Each widget appears exactly once in `layout`: in a section's `items`, or in one of its `tabs[].items` (2-6 tabs).
+- Put 3-4 stat cards (or one text alert) on top, trends and composition in the middle, and detailed tables or timelines at the bottom.
+- Without `tone`, negative numbers and `trend: "down"` render neutral; set `tone` when color should carry meaning.
 
-- **Identifier syntax**: Widget keys, section `name`, and tab `name` must match `^[a-z][a-z0-9_]{0,63}$`.
-- **Single placement**: Every key in `definition.widgets` must appear **exactly once** across `definition.layout` (either in `section.items` or inside one `section.tabs[].items` with 2–6 tabs).
-- **Explicit semantic tone**: Negative numbers and `trend: "down"` render in neutral text by design. Pass `tone` (`"default" | "info" | "success" | "warn" | "danger"` or `{ path, map, fallback }`) whenever color meaning is intended.
+Templates (full JSON in [layout-blueprints.md](references/layout-blueprints.md), or `get_board_guide({ blueprint })`):
 
-Read [references/widget-and-repair-cookbook.md](references/widget-and-repair-cookbook.md) (or call `get_board_guide({ widgets: [...] })`) when configuring `kv`, `meter`, `list`, `table`, `line`, `bar`, `text`, or resolving validation/binding issues.
+- `agent_golden_signals`: Agent & Service Golden Signals. Autonomous agent fleets, background workers, API gateways, and LLM token/latency monitoring.
+- `executive_briefing`: Executive & Daily Intelligence Briefing. Morning news/research digests, competitive intelligence, engineering standups, and PR/issue triage.
+- `saas_business_pulse`: Personal Business & SaaS Revenue Pulse. Indie SaaS revenue, e-commerce orders, subscription retention, and personal finance tracking.
+- `release_war_room`: Release Rollout & Incident War Room. Canary rollouts, database migrations, live incident response, and SLA burn tracking.
 
-## 4. Verify & Complete
+## Warnings and errors
 
-**Done when**:
-1. The write call returns `isError !== true`.
-2. `structuredContent.warnings` is **absent** (all bindings across visible sections and hidden `tabs` match stored JSON paths and types). If `warnings` is present, repair the missing/mistyped path via `update_board_data` or fix the widget binding via `change_definition` until `warnings` disappears.
-3. You share `structuredContent.board_url` with the user along with the data cut-off window and a concise summary in the user's language.
+- `warnings` means the write was saved but a binding does not match the data. Fix the data with `update_board_data` or the binding with `change_definition`, and repeat until none remain.
+- On `isError: true`, read `error.details`. [widget-and-repair-cookbook.md](references/widget-and-repair-cookbook.md) lists each warning and error code with its fix.

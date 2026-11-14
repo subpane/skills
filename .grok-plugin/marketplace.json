@@ -6,14 +6,14 @@
   },
   "metadata": {
     "description": "Calm, live personal dashboards maintained by AI agents over OAuth 2.1 MCP.",
-    "version": "1.0.0"
+    "version": "1.1.0"
   },
   "plugins": [
     {
       "name": "subpane",
       "source": ".",
-      "description": "Connect AI assistants and autonomous agents to Subpane over Streamable HTTP MCP with peer-benchmarked dashboard layout blueprints and binding diagnostics.",
-      "version": "1.0.0",
+      "description": "Connect AI assistants and agents to Subpane over Streamable HTTP MCP to publish and maintain live dashboards, with layout templates and repair guidance.",
+      "version": "1.1.0",
       "category": "productivity",
       "keywords": [
         "subpane",
