@@ -1,27 +1,31 @@
 {
   "name": "subpane",
+  "description": "Calm, live personal dashboards maintained by AI agents over OAuth 2.1 MCP.",
   "owner": {
     "name": "Subpane",
     "url": "https://subpane.app"
   },
   "metadata": {
     "description": "Calm, live personal dashboards maintained by AI agents over OAuth 2.1 MCP.",
-    "version": "1.1.0"
+    "version": "1.1.1"
   },
   "plugins": [
     {
       "name": "subpane",
-      "source": ".",
-      "description": "Connect AI assistants and agents to Subpane over Streamable HTTP MCP to publish and maintain live dashboards, with layout templates and repair guidance.",
-      "version": "1.1.0",
+      "source": "./",
+      "description": "Connect Grok and AI agents to Subpane over OAuth 2.1 Streamable HTTP MCP to create, update, and maintain calm live dashboards with layout blueprints and zero-warning repair guidance.",
+      "version": "1.1.1",
       "category": "productivity",
+      "homepage": "https://subpane.app",
       "keywords": [
         "subpane",
-        "dashboard",
-        "monitoring",
-        "briefing",
-        "analytics",
-        "mcp"
+        "subpane dashboard",
+        "subpane board",
+        "live dashboard",
+        "kpi briefing"
+      ],
+      "domains": [
+        "subpane.app"
       ]
     }
   ]

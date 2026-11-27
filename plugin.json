@@ -1,24 +1,23 @@
 {
   "$schema": "https://agent-plugins.org/schemas/1.0.0/plugin.schema.json",
   "name": "subpane",
-  "displayName": "Subpane",
-  "version": "1.1.0",
+  "version": "1.1.1",
   "description": "Create, design, and maintain calm live dashboards from structured JSON over OAuth 2.1 Streamable HTTP MCP.",
-  "homepage": "https://subpane.app",
-  "repository": "https://github.com/subpane/skills",
   "author": {
     "name": "Subpane",
+    "email": "hello@subpane.app",
     "url": "https://subpane.app"
   },
+  "homepage": "https://subpane.app",
+  "repository": "https://github.com/subpane/skills",
   "license": "MIT",
   "keywords": [
     "subpane",
-    "dashboard",
+    "subpane-dashboard",
+    "live-dashboard",
     "telemetry",
     "briefing",
     "kpi",
     "mcp"
-  ],
-  "skills": "./skills",
-  "mcpServers": "./.mcp.json"
+  ]
 }

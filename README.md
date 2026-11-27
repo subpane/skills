@@ -31,7 +31,8 @@ npx skills add subpane/skills
 ```
 
 - **Repository**: [`github.com/subpane/skills`](https://github.com/subpane/skills)
-- **Plugin Manifest**: [`plugin.json`](./plugin.json) + [`.mcp.json`](./.mcp.json)
+- **Agent Plugins 1.0 Manifests**: [`plugin.json`](./plugin.json) + [`mcp.json`](./mcp.json)
+- **Grok Plugin Manifests**: [`.grok-plugin/plugin.json`](./.grok-plugin/plugin.json) + [`.grok-plugin/marketplace.json`](./.grok-plugin/marketplace.json) + [`.mcp.json`](./.mcp.json)
 - **Skill Entry**: [`skills/subpane/SKILL.md`](./skills/subpane/SKILL.md)
 - **Reference Guides**:
   - [`skills/subpane/references/layout-blueprints.md`](./skills/subpane/references/layout-blueprints.md) — 4 ready-to-adapt layout blueprints
@@ -69,8 +70,10 @@ Sections also support instant, zero-request static view tabs (`section.tabs`, 2�
 
 ## Security & Access Control
 
-- Every connection uses per-user **OAuth 2.1** tokens scoped strictly to `boards` (and optional `offline_access` rotation) on `https://subpane.app/mcp` (or your instance's `/mcp` endpoint).
-- Connected agents can create, read, and update boards, while board archiving, restoration, and connection revocation remain exclusively under user control at [subpane.app](https://subpane.app) (or your instance's **Settings › Authorized apps**).
+- **Network endpoint**: `https://subpane.app/mcp` (or `https://<your-host>/mcp` when connecting to a self-hosted instance).
+- **Authentication & scopes**: Every connection uses per-user **OAuth 2.1 + S256 PKCE** tokens scoped strictly to `boards` (and optional `offline_access` rotation). No API keys or static secrets are stored in this repository.
+- **Least-privilege boundaries**: Connected agents can create, read, and update boards, while board archiving, restoration, and connection revocation remain exclusively under user control at [subpane.app](https://subpane.app) (**Settings › Authorized apps**).
+- **Policies & Support**: [Privacy Policy](https://subpane.app/privacy) · [Terms of Service](https://subpane.app/terms) · Contact [`hello@subpane.app`](mailto:hello@subpane.app)
 
 ## License
 

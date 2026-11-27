@@ -1,0 +1,23 @@
+{
+  "name": "subpane",
+  "version": "1.1.1",
+  "description": "Connect Grok and AI agents to Subpane over OAuth 2.1 Streamable HTTP MCP to create, update, and maintain calm live dashboards with layout blueprints and zero-warning repair guidance.",
+  "author": {
+    "name": "Subpane",
+    "email": "hello@subpane.app",
+    "url": "https://subpane.app"
+  },
+  "homepage": "https://subpane.app",
+  "repository": "https://github.com/subpane/skills",
+  "license": "MIT",
+  "logo": "./assets/logo.png",
+  "keywords": [
+    "subpane",
+    "subpane dashboard",
+    "subpane board",
+    "live dashboard",
+    "kpi briefing"
+  ],
+  "skills": "./skills/",
+  "mcpServers": "./.mcp.json"
+}
